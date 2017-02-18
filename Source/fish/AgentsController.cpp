@@ -1,11 +1,11 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "fish.h"
-#include "Agent.h"
+#include "AgentsController.h"
 
 
 // Sets default values
-AAgent::AAgent()
+AAgentsController::AAgentsController()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -13,22 +13,16 @@ AAgent::AAgent()
 }
 
 // Called when the game starts or when spawned
-void AAgent::BeginPlay()
+void AAgentsController::BeginPlay()
 {
 	Super::BeginPlay();
+	
 }
 
 // Called every frame
-void AAgent::Tick( float DeltaTime )
+void AAgentsController::Tick( float DeltaTime )
 {
 	Super::Tick( DeltaTime );
-}
-
-void AAgent::Swim(TArray<AActor*> allNeighbors) {
 
 }
 
-float AAgent::sampleGaussian(float avg, float sd) {
-	// TODO
-	return avg;
-}
