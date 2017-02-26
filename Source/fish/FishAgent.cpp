@@ -11,21 +11,21 @@ int AFishAgent::num_neighbors = 100;
 float AFishAgent::adaptivity = 0.3;
 float AFishAgent::neighbor_influence = 0.1;
 
+int AFishAgent::cruise_speed = 2;
+float AFishAgent::body_length = 3;
+
 // Zone of Separation
-float AFishAgent::radius_s = 2;
+float AFishAgent::radius_s = 2 * AFishAgent::body_length;
 float AFishAgent::blindangle_back_s = -0.5;
 
 // Zone of Attraction
-float AFishAgent::max_radius_a = 5;
+float AFishAgent::max_radius_a = 5 * AFishAgent::body_length;
 float AFishAgent::blindangle_back_a = -0.5;
 float AFishAgent::blindangle_front_a = 0.5;
 
 // Zone of Cohesion
-float AFishAgent::max_radius_c = 15;
+float AFishAgent::max_radius_c = 15 * AFishAgent::body_length;
 float AFishAgent::blindangle_back_c = 0;
-
-int AFishAgent::cruise_speed = 2;
-float AFishAgent::body_length = 3;
 
 // Weights
 int AFishAgent::weight_s = 10;
@@ -99,6 +99,7 @@ void AFishAgent::Swim(TArray<AActor*> allNeighbors) {
 	float mySpeed = GetSpeed();
 
 	UE_LOG(YourLog,Warning,TEXT("self at %s"), *myPos.ToString());
+	UE_LOG(YourLog,Warning,TEXT("speed is %f"), mySpeed);
 
 	int num_s = 0;
 	int num_a = 0;
@@ -108,6 +109,7 @@ void AFishAgent::Swim(TArray<AActor*> allNeighbors) {
 	FVector dir_c = FVector(0.0);
 	num_neighbors = allNeighbors.Num();
 	UE_LOG(YourLog,Warning,TEXT("%d Neighbors:"), num_neighbors);
+
 	for (AActor* neighbor : allNeighbors) {
 		FVector pos = neighbor->GetActorLocation();
 		if (pos == myPos) continue;
@@ -115,7 +117,7 @@ void AFishAgent::Swim(TArray<AActor*> allNeighbors) {
 
 		UE_LOG(YourLog,Warning,TEXT("neighbor at %s"), *pos.ToString());
 
-		FVector diff_vector = pos - myPos;
+		FVector diff_vector = pos - myPos;		// vector pointing towards neighbour
 		float dot = FVector::DotProduct(force_net, diff_vector);
 		float diff_cos = dot / (mySpeed * diff_vector.Size());
 		UE_LOG(YourLog,Warning,TEXT("neighbor dot is %f"), dot);
@@ -126,7 +128,7 @@ void AFishAgent::Swim(TArray<AActor*> allNeighbors) {
 
 		float distance = diff_vector.Size();
 		UE_LOG(YourLog,Warning,TEXT("neighbor is %f away"), distance);
-		if (distance < radius_s) {
+		if (distance < radius_s) {	// If neighbour is in the separation radius
 			UE_LOG(YourLog,Warning,TEXT("Repulsion"));
 			// repulsion calc
 			num_s += 1;
@@ -151,24 +153,23 @@ void AFishAgent::Swim(TArray<AActor*> allNeighbors) {
 	FVector force_a;
 	FVector force_c;
 
-	if (num_s == 0) {
+	if (num_s == 0) {	// No fish in repulsion radius
 		force_s = FVector(0);
 	} else {
 		dir_s = - (1.0 / (float)num_s) * dir_s;
 		force_s = weight_s * dir_s.GetUnsafeNormal();
 	}
 	
-	if (num_a == 0) {
+	if (num_a == 0) {	// No fish in alignment radius
 		force_a = FVector(0);
 	} else {
 		dir_a = - (1.0 / (float)num_a) * dir_a;
 		force_a = weight_a * (dir_a - e_x).GetUnsafeNormal();
 	}
 	
-	if (num_c == 0) {
+	if (num_c == 0) {	// No fish in cohesion radius
 		force_c = FVector(0);
 	} else {
-
 		dir_c = - (1.0 / (float)num_c) * dir_c;
 		// UE_LOG(YourLog,Warning,TEXT("num_c = %d, dir_c: %s"), num_c, *dir_c.ToString());
 		force_c = weight_c * dir_c.GetUnsafeNormal();
