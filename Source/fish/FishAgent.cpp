@@ -148,6 +148,7 @@ void AFishAgent::Swim(TArray<AActor*> allNeighbors) {
 		}
 	}
 	FVector e_x = GetActorForwardVector();
+	UE_LOG(YourLog,Warning,TEXT("forward vector: %s"), *e_x.ToString());
 
 	FVector force_s;
 	FVector force_a;
@@ -175,7 +176,9 @@ void AFishAgent::Swim(TArray<AActor*> allNeighbors) {
 		force_c = weight_c * dir_c.GetUnsafeNormal();
 	}
 	
-	FVector force_speed = (1 / relaxation_time) * (cruise_speed - mySpeed) * e_x;
+	// FVector force_speed = (1 / relaxation_time) * (cruise_speed - mySpeed) * e_x;
+	FVector force_speed = relaxation_time * (cruise_speed - mySpeed) * e_x;
+
 
 	FVector z = FVector(0, 0, 1);
 	FVector force_pc = -pitch_control * FVector::DotProduct(e_x, z) * z;
