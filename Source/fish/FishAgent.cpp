@@ -25,6 +25,7 @@ float AFishAgent::max_radius_c = 15;
 float AFishAgent::blindangle_back_c = 0;
 
 int AFishAgent::cruise_speed = 2;
+float AFishAgent::body_length = 3;
 
 // Weights
 int AFishAgent::weight_s = 10;
@@ -35,7 +36,7 @@ int AFishAgent::pitch_control = 2;
 int AFishAgent::roll_control = 5;
 float AFishAgent::noise_factor = 0.5;
 
-int AFishAgent::force_max = 3;
+float AFishAgent::force_max = 3;
 
 // Sets default values
 AFishAgent::AFishAgent()
@@ -43,10 +44,21 @@ AFishAgent::AFishAgent()
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
-	force_net = FVector(FMath::RandRange((float)-1, (float)1.0), FMath::RandRange((float)-1, (float)1.0), 0.0);
-	radius_c = max_radius_c; //15
+	force_net = FVector(1.0, 1.0, 0.0);
+	// force_net = FVector(FMath::RandRange((float)-1, (float)1.0), FMath::RandRange((float)-1, (float)1.0), 0.0);
+	
 
 	// UE_LOG(YourLog,Warning,TEXT("force net starts as %s"), *force_net.ToString());
+}
+
+void AFishAgent::SetBodyLength(float bl) {
+	AFishAgent::body_length = bl;
+	AFishAgent::radius_s *= bl;
+	AFishAgent::max_radius_a *= bl;
+	AFishAgent::max_radius_c *= bl;
+	AFishAgent::force_max *= bl;
+
+	radius_c = AFishAgent::max_radius_c;
 }
 
 // Called when the game starts or when spawned
@@ -73,10 +85,10 @@ float AFishAgent::CalcCohesionRadius() {
 	// density-dependent term
 	float R_i = max_radius_c - (neighbor_influence * num_neighbors);
 	float lerp = FMath::Lerp(radius_c, R_i, s);
-	// UE_LOG(YourLog,Warning,TEXT("R_i=%f, radius_s=%f, lerp=%f"), R_i, radius_s, lerp);
+	UE_LOG(YourLog,Warning,TEXT("R_i=%f, radius_s=%f, lerp=%f"), R_i, radius_s, lerp);
 	radius_c = fmax(radius_s, lerp);
 
-	// UE_LOG(YourLog,Warning,TEXT("radius_c is %f"), radius_c);
+	UE_LOG(YourLog,Warning,TEXT("radius_c is %f"), radius_c);
 
 	return radius_c;
 }
@@ -86,7 +98,7 @@ void AFishAgent::Swim(TArray<AActor*> allNeighbors) {
 	FVector myPos = GetActorLocation();
 	float mySpeed = GetSpeed();
 
-	// UE_LOG(YourLog,Warning,TEXT("self at %s"), *myPos.ToString());
+	UE_LOG(YourLog,Warning,TEXT("self at %s"), *myPos.ToString());
 
 	int num_s = 0;
 	int num_a = 0;
@@ -95,43 +107,42 @@ void AFishAgent::Swim(TArray<AActor*> allNeighbors) {
 	FVector dir_a = FVector(0.0);
 	FVector dir_c = FVector(0.0);
 	num_neighbors = allNeighbors.Num();
-	// UE_LOG(YourLog,Warning,TEXT("%d Neighbors:"), num_neighbors);
+	UE_LOG(YourLog,Warning,TEXT("%d Neighbors:"), num_neighbors);
 	for (AActor* neighbor : allNeighbors) {
 		FVector pos = neighbor->GetActorLocation();
 		if (pos == myPos) continue;
 
 
-		// UE_LOG(YourLog,Warning,TEXT("neighbor at %s"), *pos.ToString());
+		UE_LOG(YourLog,Warning,TEXT("neighbor at %s"), *pos.ToString());
 
 		FVector diff_vector = pos - myPos;
 		float dot = FVector::DotProduct(force_net, diff_vector);
 		float diff_cos = dot / (mySpeed * diff_vector.Size());
-		// UE_LOG(YourLog,Warning,TEXT("neighbor dot is %f"), dot);
-		// UE_LOG(YourLog,Warning,TEXT("neighbor angle is %f"), diff_cos);
+		UE_LOG(YourLog,Warning,TEXT("neighbor dot is %f"), dot);
+		UE_LOG(YourLog,Warning,TEXT("neighbor angle is %f"), diff_cos);
 
 		if (diff_cos < blindangle_back_a) continue;
 		
 
-		float diff_radius = diff_vector.Size();
-		// UE_LOG(YourLog,Warning,TEXT("neighbor is %f away"), diff_radius);
-		if (diff_radius < radius_s) {
-			// UE_LOG(YourLog,Warning,TEXT("Repulsion"));
+		float distance = diff_vector.Size();
+		UE_LOG(YourLog,Warning,TEXT("neighbor is %f away"), distance);
+		if (distance < radius_s) {
+			UE_LOG(YourLog,Warning,TEXT("Repulsion"));
 			// repulsion calc
 			num_s += 1;
-			dir_s += diff_vector / FMath::Square(diff_radius);
-		} else if (diff_radius < max_radius_a) {
-		// } else if (diff_radius < max_radius_a && diff_cos < blindangle_front_a) {
-			// UE_LOG(YourLog,Warning,TEXT("Alignment"));
+			dir_s += diff_vector / FMath::Square(distance);
+		} else if (distance < max_radius_a) {
+		// } else if (distance < max_radius_a && diff_cos < blindangle_front_a) {
+			UE_LOG(YourLog,Warning,TEXT("Alignment"));
 			// alignment calc
 			num_a += 1;
 			dir_a += neighbor->GetActorForwardVector();
 		} else {
 		// } else if (diff_cos > blindangle_back_c) {
-			// UE_LOG(YourLog,Warning,TEXT("Cohesion"));
+			UE_LOG(YourLog,Warning,TEXT("Cohesion"));
 			// attraction calc
 			num_c += 1;
 			dir_c += diff_vector.GetUnsafeNormal();
-			// UE_LOG(YourLog,Warning,TEXT("dir_c: %s"), *dir_c.ToString());
 		}
 	}
 	FVector e_x = GetActorForwardVector();
@@ -171,24 +182,24 @@ void AFishAgent::Swim(TArray<AActor*> allNeighbors) {
 
 	FVector force_rand = FVector(0);
 
-	// UE_LOG(YourLog,Warning,TEXT("separation: %s, %s"), *dir_s.ToString(), *force_s.ToString());
-	// UE_LOG(YourLog,Warning,TEXT("attraction: %s, %s"), *dir_a.ToString(), *force_a.ToString());
-	// UE_LOG(YourLog,Warning,TEXT("cohesion: %s, %s"), *dir_c.ToString(), *force_c.ToString());
+	UE_LOG(YourLog,Warning,TEXT("separation: %s, %s"), *dir_s.ToString(), *force_s.ToString());
+	UE_LOG(YourLog,Warning,TEXT("attraction: %s, %s"), *dir_a.ToString(), *force_a.ToString());
+	UE_LOG(YourLog,Warning,TEXT("cohesion: %s, %s"), *dir_c.ToString(), *force_c.ToString());
 
-	// UE_LOG(YourLog,Warning,TEXT("speed: %s"), *force_speed.ToString());
-	// UE_LOG(YourLog,Warning,TEXT("pitch control: %s"), *force_pc.ToString());
-	// UE_LOG(YourLog,Warning,TEXT("roll control: %s"), *force_rc.ToString());
-	// UE_LOG(YourLog,Warning,TEXT("random: %s"), *force_rand.ToString());
+	UE_LOG(YourLog,Warning,TEXT("speed: %s"), *force_speed.ToString());
+	UE_LOG(YourLog,Warning,TEXT("pitch control: %s"), *force_pc.ToString());
+	UE_LOG(YourLog,Warning,TEXT("roll control: %s"), *force_rc.ToString());
+	UE_LOG(YourLog,Warning,TEXT("random: %s"), *force_rand.ToString());
 
 
 	force_net = force_s + force_a + force_c + force_speed + force_pc + force_rc + force_rand;
 
-	// UE_LOG(YourLog,Warning,TEXT("force net is %s"), *force_net.ToString());
+	UE_LOG(YourLog,Warning,TEXT("force net is %s"), *force_net.ToString());
 	if (force_net.Size() > force_max) {
 		force_net = force_net.GetUnsafeNormal() * force_max;
 	}
 
-	// UE_LOG(YourLog,Warning,TEXT("offset is %s"), *force_net.ToString());
-	// UE_LOG(YourLog,Warning,TEXT("-----------------------------"));
+	UE_LOG(YourLog,Warning,TEXT("offset is %s"), *force_net.ToString());
+	UE_LOG(YourLog,Warning,TEXT("-----------------------------"));
 	AddActorWorldOffset(force_net);
 }

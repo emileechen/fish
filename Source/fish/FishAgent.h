@@ -21,16 +21,17 @@ public:
 
 
 	FVector force_net;
-	static int force_max;
+	static float force_max;
 
 	static int num_neighbors;
+	static float body_length;
 	
 	// Zone of Separation
 	static float radius_s;
 	static float blindangle_back_s;
 
 	// Zone of Attraction
-	static float max_radius_a;
+	static float max_radius_a;				// Body length
 	static float blindangle_back_a;
 	static float blindangle_front_a;
 
@@ -72,6 +73,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category=Movement)
 	float GetSpeed();
+
+	UFUNCTION(BlueprintCallable, Category=Init)
+	void SetBodyLength(float bl);
 
 
 };
