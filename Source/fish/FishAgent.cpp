@@ -6,13 +6,17 @@
 //General Log
 DEFINE_LOG_CATEGORY(YourLog);
 
-int AFishAgent::timestep = 1;
+float AFishAgent::timestep = 0.05;
 int AFishAgent::num_neighbors = 100;
 float AFishAgent::adaptivity = 0.3;
 float AFishAgent::neighbor_influence = 0.1;
 
-int AFishAgent::cruise_speed = 2;
 float AFishAgent::body_length = 3;
+
+// 2 BL/s = 2 * BL/s * s/tick = 2 BL/tick
+float AFishAgent::cruise_speed = 2 * AFishAgent::body_length;
+
+
 
 // Zone of Separation
 float AFishAgent::radius_s = 2 * AFishAgent::body_length;
@@ -31,12 +35,12 @@ float AFishAgent::blindangle_back_c = 0;
 int AFishAgent::weight_s = 10;
 int AFishAgent::weight_a = 5;
 int AFishAgent::weight_c = 9;
-float AFishAgent::relaxation_time = 0.2;
+float AFishAgent::relaxation_time = 0.2;	// s = s * s/tick = /tick
 int AFishAgent::pitch_control = 2;
 int AFishAgent::roll_control = 5;
 float AFishAgent::noise_factor = 0.5;
 
-float AFishAgent::force_max = 3;
+float AFishAgent::force_max = 3 * FMath::Square(AFishAgent::body_length);		// BL^2 BM ⁄ s^2
 
 // Sets default values
 AFishAgent::AFishAgent()
@@ -65,13 +69,15 @@ void AFishAgent::SetBodyLength(float bl) {
 void AFishAgent::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// FTimerHandle TimerHandle;
+	// GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &AFishAgent::TimeTick, AFishAgent::timestep, true);
 }
 
 // Called every frame
 void AFishAgent::Tick( float DeltaTime )
 {
 	Super::Tick( DeltaTime );
-
 }
 
 float AFishAgent::GetSpeed() {
@@ -80,21 +86,26 @@ float AFishAgent::GetSpeed() {
 
 // Calculate adapted perception radius for cohesion forces
 float AFishAgent::CalcCohesionRadius() {
-	float s = adaptivity;
+	// float s = adaptivity;
 
-	// density-dependent term
-	float R_i = max_radius_c - (neighbor_influence * num_neighbors);
-	float lerp = FMath::Lerp(radius_c, R_i, s);
-	UE_LOG(YourLog,Warning,TEXT("R_i=%f, radius_s=%f, lerp=%f"), R_i, radius_s, lerp);
-	radius_c = fmax(radius_s, lerp);
+	// // density-dependent term
+	// float R_i = max_radius_c - (neighbor_influence * num_neighbors);
+	// float lerp = FMath::Lerp(radius_c, R_i, s);
+	// UE_LOG(YourLog,Warning,TEXT("R_i=%f, radius_s=%f, lerp=%f"), R_i, radius_s, lerp);
+	// radius_c = fmax(radius_s, lerp);
 
-	UE_LOG(YourLog,Warning,TEXT("radius_c is %f"), radius_c);
+	// UE_LOG(YourLog,Warning,TEXT("radius_c is %f"), radius_c);
 
-	return radius_c;
+	// return radius_c;
+
+
+	UE_LOG(YourLog,Warning,TEXT("radius_c is %f"), max_radius_c);
+
+	return max_radius_c;
 }
 
 
-void AFishAgent::Swim(TArray<AActor*> allNeighbors) {
+void AFishAgent::Swim(TArray<AActor*> allNeighbors, float DeltaTime) {
 	FVector myPos = GetActorLocation();
 	float mySpeed = GetSpeed();
 
@@ -107,7 +118,7 @@ void AFishAgent::Swim(TArray<AActor*> allNeighbors) {
 	FVector dir_s = FVector(0.0);
 	FVector dir_a = FVector(0.0);
 	FVector dir_c = FVector(0.0);
-	num_neighbors = allNeighbors.Num();
+	num_neighbors = allNeighbors.Num() - 1;
 	UE_LOG(YourLog,Warning,TEXT("%d Neighbors:"), num_neighbors);
 
 	for (AActor* neighbor : allNeighbors) {
@@ -118,6 +129,10 @@ void AFishAgent::Swim(TArray<AActor*> allNeighbors) {
 		UE_LOG(YourLog,Warning,TEXT("neighbor at %s"), *pos.ToString());
 
 		FVector diff_vector = pos - myPos;		// vector pointing towards neighbour
+
+		float distance_away = diff_vector.Size();
+		UE_LOG(YourLog,Warning,TEXT("neighbor is %f away"), distance_away);
+
 		float dot = FVector::DotProduct(force_net, diff_vector);
 		float diff_cos = dot / (mySpeed * diff_vector.Size());
 		UE_LOG(YourLog,Warning,TEXT("neighbor dot is %f"), dot);
@@ -147,6 +162,7 @@ void AFishAgent::Swim(TArray<AActor*> allNeighbors) {
 			dir_c += diff_vector.GetUnsafeNormal();
 		}
 	}
+
 	FVector e_x = GetActorForwardVector();
 	UE_LOG(YourLog,Warning,TEXT("forward vector: %s"), *e_x.ToString());
 
@@ -176,8 +192,7 @@ void AFishAgent::Swim(TArray<AActor*> allNeighbors) {
 		force_c = weight_c * dir_c.GetUnsafeNormal();
 	}
 	
-	// FVector force_speed = (1 / relaxation_time) * (cruise_speed - mySpeed) * e_x;
-	FVector force_speed = relaxation_time * (cruise_speed - mySpeed) * e_x;
+	FVector force_speed = (1 / relaxation_time) * (cruise_speed - mySpeed) * e_x;
 
 
 	FVector z = FVector(0, 0, 1);
@@ -204,6 +219,8 @@ void AFishAgent::Swim(TArray<AActor*> allNeighbors) {
 	}
 
 	UE_LOG(YourLog,Warning,TEXT("offset is %s"), *force_net.ToString());
+
+	UE_LOG(YourLog,Warning,TEXT("delta time is %f"), DeltaTime);
 	UE_LOG(YourLog,Warning,TEXT("-----------------------------"));
 	AddActorWorldOffset(force_net);
 }

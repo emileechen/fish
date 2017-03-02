@@ -24,5 +24,5 @@ public:
 	float sampleGaussian(float avg, float sd);
 	
 	
-	virtual void Swim(TArray<AActor*> allNeighbors);
+	virtual void Swim(TArray<AActor*> allNeighbors, float DeltaTime);
 };

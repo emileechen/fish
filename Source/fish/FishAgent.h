@@ -17,7 +17,7 @@ class FISH_API AFishAgent : public AAgent
 	
 public:	
 
-	static int timestep;
+	static float timestep;
 
 
 	FVector force_net;
@@ -40,7 +40,7 @@ public:
 	float radius_c;
 	static float blindangle_back_c;
 
-	static int cruise_speed;
+	static float cruise_speed;
 
 	// Weights
 	static int weight_s;
@@ -66,7 +66,7 @@ public:
 	virtual void Tick( float DeltaSeconds ) override;
 	
 	UFUNCTION(BlueprintCallable, Category=Movement)
-	void Swim(TArray<AActor*> allNeighbors) override;
+	void Swim(TArray<AActor*> allNeighbors, float DeltaTime) override;
 
 	UFUNCTION(BlueprintCallable, Category=Movement)
 	float CalcCohesionRadius();
