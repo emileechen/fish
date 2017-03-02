@@ -24,7 +24,7 @@ void AAgent::Tick( float DeltaTime )
 	Super::Tick( DeltaTime );
 }
 
-void AAgent::Swim(TArray<AActor*> allNeighbors, float DeltaTime) {
+void AAgent::Swim(TArray<AActor*> allNeighbors) {
 
 }
 

@@ -11,12 +11,10 @@ int AFishAgent::num_neighbors = 100;
 float AFishAgent::adaptivity = 0.3;
 float AFishAgent::neighbor_influence = 0.1;
 
-float AFishAgent::body_length = 3;
+float AFishAgent::body_length = 3;	// cm/BL
 
 // 2 BL/s = 2 * BL/s * s/tick = 2 BL/tick
 float AFishAgent::cruise_speed = 2 * AFishAgent::body_length;
-
-
 
 // Zone of Separation
 float AFishAgent::radius_s = 2 * AFishAgent::body_length;
@@ -40,7 +38,7 @@ int AFishAgent::pitch_control = 2;
 int AFishAgent::roll_control = 5;
 float AFishAgent::noise_factor = 0.5;
 
-float AFishAgent::force_max = 3 * FMath::Square(AFishAgent::body_length);		// BL^2 BM ⁄ s^2
+float AFishAgent::force_max = 3 * FMath::Square(AFishAgent::body_length);		// cm^2 / s^2
 
 // Sets default values
 AFishAgent::AFishAgent()
@@ -105,9 +103,12 @@ float AFishAgent::CalcCohesionRadius() {
 }
 
 
-void AFishAgent::Swim(TArray<AActor*> allNeighbors, float DeltaTime) {
+void AFishAgent::Swim(TArray<AActor*> allNeighbors) {
+	float delta_time = FApp::GetDeltaTime();	// seconds elapsed	s/tick
+	float bl = AFishAgent::body_length;		// cm/BL
+
 	FVector myPos = GetActorLocation();
-	float mySpeed = GetSpeed();
+	float mySpeed = GetSpeed() * delta_time;	// cm/s -> cm/tick
 
 	UE_LOG(YourLog,Warning,TEXT("self at %s"), *myPos.ToString());
 	UE_LOG(YourLog,Warning,TEXT("speed is %f"), mySpeed);
@@ -118,31 +119,30 @@ void AFishAgent::Swim(TArray<AActor*> allNeighbors, float DeltaTime) {
 	FVector dir_s = FVector(0.0);
 	FVector dir_a = FVector(0.0);
 	FVector dir_c = FVector(0.0);
-	num_neighbors = allNeighbors.Num() - 1;
-	UE_LOG(YourLog,Warning,TEXT("%d Neighbors:"), num_neighbors);
+
+	num_neighbors = allNeighbors.Num();
+	UE_LOG(YourLog,Warning,TEXT("%d Neighbors in radius:"), num_neighbors);
 
 	for (AActor* neighbor : allNeighbors) {
+
+		// Do not consider yourself as a neighbour
 		FVector pos = neighbor->GetActorLocation();
 		if (pos == myPos) continue;
-
 
 		UE_LOG(YourLog,Warning,TEXT("neighbor at %s"), *pos.ToString());
 
 		FVector diff_vector = pos - myPos;		// vector pointing towards neighbour
-
-		float distance_away = diff_vector.Size();
-		UE_LOG(YourLog,Warning,TEXT("neighbor is %f away"), distance_away);
 
 		float dot = FVector::DotProduct(force_net, diff_vector);
 		float diff_cos = dot / (mySpeed * diff_vector.Size());
 		UE_LOG(YourLog,Warning,TEXT("neighbor dot is %f"), dot);
 		UE_LOG(YourLog,Warning,TEXT("neighbor angle is %f"), diff_cos);
 
-		if (diff_cos < blindangle_back_a) continue;
-		
-
 		float distance = diff_vector.Size();
 		UE_LOG(YourLog,Warning,TEXT("neighbor is %f away"), distance);
+
+		if (diff_cos < blindangle_back_a) continue;
+
 		if (distance < radius_s) {	// If neighbour is in the separation radius
 			UE_LOG(YourLog,Warning,TEXT("Repulsion"));
 			// repulsion calc
@@ -194,7 +194,6 @@ void AFishAgent::Swim(TArray<AActor*> allNeighbors, float DeltaTime) {
 	
 	FVector force_speed = (1 / relaxation_time) * (cruise_speed - mySpeed) * e_x;
 
-
 	FVector z = FVector(0, 0, 1);
 	FVector force_pc = -pitch_control * FVector::DotProduct(e_x, z) * z;
 	FVector force_rc = -roll_control * FVector::DotProduct(GetActorRightVector(), z) * z;
@@ -214,13 +213,13 @@ void AFishAgent::Swim(TArray<AActor*> allNeighbors, float DeltaTime) {
 	force_net = force_s + force_a + force_c + force_speed + force_pc + force_rc + force_rand;
 
 	UE_LOG(YourLog,Warning,TEXT("force net is %s"), *force_net.ToString());
-	if (force_net.Size() > force_max) {
-		force_net = force_net.GetUnsafeNormal() * force_max;
+	if (force_net.Size() > force_max * FMath::Square(delta_time)) {
+		force_net = force_net.GetUnsafeNormal() * force_max * FMath::Square(delta_time);
 	}
 
 	UE_LOG(YourLog,Warning,TEXT("offset is %s"), *force_net.ToString());
 
-	UE_LOG(YourLog,Warning,TEXT("delta time is %f"), DeltaTime);
+	UE_LOG(YourLog,Warning,TEXT("delta time is %f"), delta_time);
 	UE_LOG(YourLog,Warning,TEXT("-----------------------------"));
 	AddActorWorldOffset(force_net);
 }

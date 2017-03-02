@@ -66,7 +66,7 @@ public:
 	virtual void Tick( float DeltaSeconds ) override;
 	
 	UFUNCTION(BlueprintCallable, Category=Movement)
-	void Swim(TArray<AActor*> allNeighbors, float DeltaTime) override;
+	void Swim(TArray<AActor*> allNeighbors) override;
 
 	UFUNCTION(BlueprintCallable, Category=Movement)
 	float CalcCohesionRadius();
