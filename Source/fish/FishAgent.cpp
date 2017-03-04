@@ -46,10 +46,12 @@ AFishAgent::AFishAgent()
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
-	force_net = FVector(1.0, 1.0, 0.0);
+
+	force_net = GetActorForwardVector();
+
+	// force_net = FVector(1.0, 1.0, 0.0);
 	// force_net = FVector(FMath::RandRange((float)-1, (float)1.0), FMath::RandRange((float)-1, (float)1.0), 0.0);
 	
-
 	// UE_LOG(YourLog,Warning,TEXT("force net starts as %s"), *force_net.ToString());
 }
 
@@ -129,39 +131,52 @@ void AFishAgent::Swim(TArray<AActor*> allNeighbors) {
 		FVector pos = neighbor->GetActorLocation();
 		if (pos == myPos) continue;
 
+
+		UE_LOG(YourLog,Warning,TEXT("-------"));
 		UE_LOG(YourLog,Warning,TEXT("neighbor at %s"), *pos.ToString());
 
 		FVector diff_vector = pos - myPos;		// vector pointing towards neighbour
 
 		float dot = FVector::DotProduct(force_net, diff_vector);
 		float diff_cos = dot / (mySpeed * diff_vector.Size());
-		UE_LOG(YourLog,Warning,TEXT("neighbor dot is %f"), dot);
-		UE_LOG(YourLog,Warning,TEXT("neighbor angle is %f"), diff_cos);
+		// UE_LOG(YourLog,Warning,TEXT("neighbor dot is %f"), dot);
+		// UE_LOG(YourLog,Warning,TEXT("neighbor angle is %f"), diff_cos);
 
 		float distance = diff_vector.Size();
 		UE_LOG(YourLog,Warning,TEXT("neighbor is %f away"), distance);
 
-		if (diff_cos < blindangle_back_a) continue;
+		// if (diff_cos < blindangle_back_a) {
+		// 	UE_LOG(YourLog,Warning,TEXT("blind angle at %f"), diff_cos);
+		// 	continue;
+		// }
 
+		// SEPARATION
 		if (distance < radius_s) {	// If neighbour is in the separation radius
 			UE_LOG(YourLog,Warning,TEXT("Repulsion"));
-			// repulsion calc
 			num_s += 1;
 			dir_s += diff_vector / FMath::Square(distance);
-		} else if (distance < max_radius_a) {
-		// } else if (distance < max_radius_a && diff_cos < blindangle_front_a) {
+		}
+
+		// ALIGNMENT
+		else if (distance < max_radius_a) {
 			UE_LOG(YourLog,Warning,TEXT("Alignment"));
-			// alignment calc
+			if (diff_cos < blindangle_back_a) {
+				UE_LOG(YourLog,Warning,TEXT("blind angle at %f"), diff_cos);
+				continue;
+			}
 			num_a += 1;
 			dir_a += neighbor->GetActorForwardVector();
-		} else {
-		// } else if (diff_cos > blindangle_back_c) {
+		}
+
+		// COHESION
+		else {
 			UE_LOG(YourLog,Warning,TEXT("Cohesion"));
-			// attraction calc
 			num_c += 1;
 			dir_c += diff_vector.GetUnsafeNormal();
 		}
 	}
+
+	UE_LOG(YourLog,Warning,TEXT("-------"));
 
 	FVector e_x = GetActorForwardVector();
 	UE_LOG(YourLog,Warning,TEXT("forward vector: %s"), *e_x.ToString());
@@ -174,22 +189,21 @@ void AFishAgent::Swim(TArray<AActor*> allNeighbors) {
 		force_s = FVector(0);
 	} else {
 		dir_s = - (1.0 / (float)num_s) * dir_s;
-		force_s = weight_s * dir_s.GetUnsafeNormal();
+		force_s = weight_s * dir_s.GetSafeNormal();
 	}
 	
 	if (num_a == 0) {	// No fish in alignment radius
 		force_a = FVector(0);
 	} else {
 		dir_a = - (1.0 / (float)num_a) * dir_a;
-		force_a = weight_a * (dir_a - e_x).GetUnsafeNormal();
+		force_a = weight_a * (dir_a - e_x).GetSafeNormal();
 	}
 	
 	if (num_c == 0) {	// No fish in cohesion radius
 		force_c = FVector(0);
 	} else {
 		dir_c = - (1.0 / (float)num_c) * dir_c;
-		// UE_LOG(YourLog,Warning,TEXT("num_c = %d, dir_c: %s"), num_c, *dir_c.ToString());
-		force_c = weight_c * dir_c.GetUnsafeNormal();
+		force_c = weight_c * dir_c.GetSafeNormal();
 	}
 	
 	FVector force_speed = (1 / relaxation_time) * (cruise_speed - mySpeed) * e_x;
@@ -200,9 +214,9 @@ void AFishAgent::Swim(TArray<AActor*> allNeighbors) {
 
 	FVector force_rand = FVector(0);
 
-	UE_LOG(YourLog,Warning,TEXT("separation: %s, %s"), *dir_s.ToString(), *force_s.ToString());
-	UE_LOG(YourLog,Warning,TEXT("attraction: %s, %s"), *dir_a.ToString(), *force_a.ToString());
-	UE_LOG(YourLog,Warning,TEXT("cohesion: %s, %s"), *dir_c.ToString(), *force_c.ToString());
+	UE_LOG(YourLog,Warning,TEXT("separation:	dir: %s,	force: %s"), *dir_s.ToString(), *force_s.ToString());
+	UE_LOG(YourLog,Warning,TEXT("attraction:	dir: %s,	force: %s"), *dir_a.ToString(), *force_a.ToString());
+	UE_LOG(YourLog,Warning,TEXT("cohesion:	dir: %s,	force: %s"), *dir_c.ToString(), *force_c.ToString());
 
 	UE_LOG(YourLog,Warning,TEXT("speed: %s"), *force_speed.ToString());
 	UE_LOG(YourLog,Warning,TEXT("pitch control: %s"), *force_pc.ToString());
@@ -220,6 +234,6 @@ void AFishAgent::Swim(TArray<AActor*> allNeighbors) {
 	UE_LOG(YourLog,Warning,TEXT("offset is %s"), *force_net.ToString());
 
 	UE_LOG(YourLog,Warning,TEXT("delta time is %f"), delta_time);
-	UE_LOG(YourLog,Warning,TEXT("-----------------------------"));
+	UE_LOG(YourLog,Warning,TEXT("-------------------------------------------"));
 	AddActorWorldOffset(force_net);
 }
