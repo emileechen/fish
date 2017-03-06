@@ -64,7 +64,9 @@ public:
 	
 	// Called every frame
 	virtual void Tick( float DeltaSeconds ) override;
-	
+
+	bool CheckWithinAngle(FVector, FVector, float);
+
 	UFUNCTION(BlueprintCallable, Category=Movement)
 	void Swim(TArray<AActor*> allNeighbors) override;
 

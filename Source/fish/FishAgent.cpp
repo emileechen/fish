@@ -18,16 +18,16 @@ float AFishAgent::cruise_speed = 2 * AFishAgent::body_length;
 
 // Zone of Separation
 float AFishAgent::radius_s = 2 * AFishAgent::body_length;
-float AFishAgent::blindangle_back_s = -0.5;
+float AFishAgent::blindangle_back_s = 60;	// degrees
 
 // Zone of Attraction
 float AFishAgent::max_radius_a = 5 * AFishAgent::body_length;
-float AFishAgent::blindangle_back_a = -0.5;
-float AFishAgent::blindangle_front_a = 0.5;
+float AFishAgent::blindangle_back_a = 60;	// degrees
+float AFishAgent::blindangle_front_a = 60;
 
 // Zone of Cohesion
 float AFishAgent::max_radius_c = 15 * AFishAgent::body_length;
-float AFishAgent::blindangle_back_c = 0;
+float AFishAgent::blindangle_back_c = 90;
 
 // Weights
 int AFishAgent::weight_s = 10;
@@ -105,6 +105,17 @@ float AFishAgent::CalcCohesionRadius() {
 }
 
 
+// a = forward or back vector, b = vector to neighbour, angle = max limit of angle from a
+bool AFishAgent::CheckWithinAngle(FVector a, FVector b, float angle) {
+	float dot = FVector::DotProduct(a.GetSafeNormal2D(), b.GetSafeNormal2D());		// a.b = cos(theta)
+	float rad = FMath::DegreesToRadians(angle);
+	float limit = FMath::Cos(rad);
+	UE_LOG(YourLog,Warning,TEXT("a = %s; b = %s, lim = %f, dot = %f, limit = %f"), *a.ToString(), *b.ToString(), angle, dot, limit);
+	// returns true if in the blind angle
+	return dot > limit;
+}
+
+
 void AFishAgent::Swim(TArray<AActor*> allNeighbors) {
 	float delta_time = FApp::GetDeltaTime();	// seconds elapsed	s/tick
 	float bl = AFishAgent::body_length;		// cm/BL
@@ -137,8 +148,8 @@ void AFishAgent::Swim(TArray<AActor*> allNeighbors) {
 
 		FVector diff_vector = pos - myPos;		// vector pointing towards neighbour
 
-		float dot = FVector::DotProduct(force_net, diff_vector);
-		float diff_cos = dot / (mySpeed * diff_vector.Size());
+		// float dot = FVector::DotProduct(force_net, diff_vector);
+		// float diff_cos = dot / (mySpeed * diff_vector.Size());
 		// UE_LOG(YourLog,Warning,TEXT("neighbor dot is %f"), dot);
 		// UE_LOG(YourLog,Warning,TEXT("neighbor angle is %f"), diff_cos);
 
@@ -160,8 +171,11 @@ void AFishAgent::Swim(TArray<AActor*> allNeighbors) {
 		// ALIGNMENT
 		else if (distance < max_radius_a) {
 			UE_LOG(YourLog,Warning,TEXT("Alignment"));
-			if (diff_cos < blindangle_back_a) {
-				UE_LOG(YourLog,Warning,TEXT("blind angle at %f"), diff_cos);
+			if (AFishAgent::CheckWithinAngle(-1 * force_net, diff_vector, blindangle_back_a)) {
+				UE_LOG(YourLog,Warning,TEXT("blind angle back"));
+				continue;
+			} else if (~ AFishAgent::CheckWithinAngle(force_net, diff_vector, blindangle_front_a)) {
+				UE_LOG(YourLog,Warning,TEXT("blind angle front"));
 				continue;
 			}
 			num_a += 1;
@@ -171,6 +185,10 @@ void AFishAgent::Swim(TArray<AActor*> allNeighbors) {
 		// COHESION
 		else {
 			UE_LOG(YourLog,Warning,TEXT("Cohesion"));
+			if (AFishAgent::CheckWithinAngle(-1 * force_net, diff_vector, blindangle_back_c)) {
+				UE_LOG(YourLog,Warning,TEXT("blind angle back"));
+				continue;
+			}
 			num_c += 1;
 			dir_c += diff_vector.GetUnsafeNormal();
 		}
