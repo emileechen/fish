@@ -10,6 +10,17 @@
 //General Log
 DECLARE_LOG_CATEGORY_EXTERN(YourLog, Log, All);
 
+UENUM(BlueprintType)
+enum class EPerceptionEnum : uint8
+{
+        E_S 	UMETA(DisplayName="Separate"),
+        E_A 	UMETA(DisplayName="Align"),
+        E_Ab 	UMETA(DisplayName="Align back blind"),
+		E_C		UMETA(DisplayName="Cohere"),
+		E_Cb 	UMETA(DisplayName="Cohere back blind")
+};
+
+
 UCLASS()
 class FISH_API AFishAgent : public AAgent
 {
@@ -21,25 +32,31 @@ public:
 
 
 	FVector force_net;
+	static float mult_force_max;
 	static float force_max;
 
 	static int num_neighbors;
 	static float body_length;
 	
 	// Zone of Separation
+	static float mult_radius_s;	
 	static float radius_s;
 	static float blindangle_back_s;
 
 	// Zone of Attraction
+	static float mult_radius_a;	
 	static float max_radius_a;				// Body length
+	float radius_a;
 	static float blindangle_back_a;
 	static float blindangle_front_a;
 
 	// Zone of Cohesion
+	static float mult_radius_c;	
 	static float max_radius_c;
 	float radius_c;
 	static float blindangle_back_c;
 
+	static float mult_cruise_speed;
 	static float cruise_speed;
 
 	// Weights
@@ -71,13 +88,15 @@ public:
 	void Swim(TArray<AActor*> allNeighbors) override;
 
 	UFUNCTION(BlueprintCallable, Category=Movement)
-	float CalcCohesionRadius();
+	float CalcPerceptionRadius();
 
-	UFUNCTION(BlueprintCallable, Category=Movement)
+	// UFUNCTION(BlueprintCallable, Category=Movement)
 	float GetSpeed();
 
 	UFUNCTION(BlueprintCallable, Category=Init)
 	void SetBodyLength(float bl);
 
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category=Perception)
+	void setPerceivedMat(EPerceptionEnum e);
 
 };
