@@ -3,6 +3,7 @@
 #pragma once
 
 #include "Agent.h"
+#include "Kismet/KismetMathLibrary.h"
 
 #include "GameFramework/Actor.h"
 #include "FishAgent.generated.h"
@@ -73,6 +74,8 @@ public:
 	// Influence of a single neighbor; aka n_w
 	static float neighbor_influence;
 
+	bool flip;
+
 	// Sets default values for this actor's properties
 	AFishAgent();
 
@@ -95,6 +98,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category=Init)
 	void SetBodyLength(float bl);
+
+	UFUNCTION(BlueprintCallable, Category=Perception)
+	void hitWall();
 
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category=Perception)
 	void setPerceivedMat(EPerceptionEnum e);

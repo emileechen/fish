@@ -15,7 +15,7 @@ float AFishAgent::body_length = 3;	// cm/BL
 
 // 2 BL/s = 2 * BL/s * s/tick = 2 BL/tick
 float AFishAgent::mult_cruise_speed = 2;
-float AFishAgent::cruise_speed = 2;
+float AFishAgent::cruise_speed = 1;
 
 // Zone of Separation
 float AFishAgent::mult_radius_s = 2;	
@@ -130,6 +130,10 @@ bool AFishAgent::CheckWithinAngle(FVector a, FVector b, float angle) {
 
 // }
 
+void AFishAgent::hitWall() {
+	flip = true;
+}
+
 
 void AFishAgent::Swim(TArray<AActor*> allNeighbors) {
 	float delta_time = FApp::GetDeltaTime();	// seconds elapsed	s/tick
@@ -137,6 +141,16 @@ void AFishAgent::Swim(TArray<AActor*> allNeighbors) {
 	FVector myPos = GetActorLocation();
 	float mySpeed = GetSpeed();					// BL/s
 	FVector e_x = GetActorForwardVector();
+
+	// UE_LOG(YourLog,Warning,TEXT("looking at %s"), *e_x.ToString());
+
+
+	// if (flip) {
+	// 	SetActorRotation((-1 * e_x).Rotation());
+	// 	flip = false;
+	// 	UE_LOG(YourLog,Warning,TEXT("flipped"));
+	// 	return;
+	// }
 
 	// UE_LOG(YourLog,Warning,TEXT("----------------------------------"));
 	// UE_LOG(YourLog,Warning,TEXT("self at %s"), *myPos.ToString());
@@ -243,7 +257,7 @@ void AFishAgent::Swim(TArray<AActor*> allNeighbors) {
 	if (num_a == 0) {	// No fish in alignment radius
 		force_a = FVector(0);
 	} else {
-		dir_a = (1.0 / (float)num_a) * dir_a;
+		dir_a = (-1.0 / (float)num_a) * dir_a;
 		force_a = weight_a * (dir_a - e_x).GetSafeNormal();
 		// UE_LOG(YourLog,Warning,TEXT("attraction:	dir: %s,	force: %s"), *dir_a.ToString(), *force_a.ToString());
 	}
@@ -251,7 +265,7 @@ void AFishAgent::Swim(TArray<AActor*> allNeighbors) {
 	if (num_c == 0) {	// No fish in cohesion radius
 		force_c = FVector(0);
 	} else {
-		dir_c = (1.0 / (float)num_c) * dir_c;
+		dir_c = (-1.0 / (float)num_c) * dir_c;
 		force_c = weight_c * dir_c.GetSafeNormal();
 		// UE_LOG(YourLog,Warning,TEXT("cohesion:	dir: %s,	force: %s"), *dir_c.ToString(), *force_c.ToString());
 	}
@@ -262,7 +276,7 @@ void AFishAgent::Swim(TArray<AActor*> allNeighbors) {
 	FVector force_pc = -pitch_control * FVector::DotProduct(e_x, z) * z;
 	FVector force_rc = -roll_control * FVector::DotProduct(GetActorRightVector(), z) * z;
 	
-	FVector force_rand = FVector(0);
+	FVector force_rand = FVector(FMath::RandRange((float)-1, (float)1.0), FMath::RandRange((float)-1, (float)1.0), 0.0);
 
 
 	// UE_LOG(YourLog,Warning,TEXT("speed: %s"), *force_speed.ToString());
@@ -274,14 +288,18 @@ void AFishAgent::Swim(TArray<AActor*> allNeighbors) {
 	force_net = force_s + force_a + force_c + force_pc + force_rc + force_rand;
 
 	// UE_LOG(YourLog,Warning,TEXT("force net is %s of mag %f vs cap of %f"), *force_net.ToString(), force_net.Size(), force_max);
-	if (force_net.Size() > force_max) {
+	float force_mag = force_net.Size();
+	if (force_mag > force_max) {
 		force_net = force_net.GetSafeNormal() * force_max;
 		// UE_LOG(YourLog,Warning,TEXT("capped force"));
 	}
 
-	// UE_LOG(YourLog,Warning,TEXT("offset is %s"), *force_net.ToString());
+	// UE_LOG(YourLog,Warning,TEXT("s: %d, a: %d, c: %d >>> moves %f"), num_s, num_a, num_c, force_mag);
 
 	// UE_LOG(YourLog,Warning,TEXT("delta time is %f"), delta_time);
 	// UE_LOG(YourLog,Warning,TEXT("-------------------------------------------"));
-	AddActorWorldOffset(force_net * delta_time);
+	FVector newPos = myPos + (force_net * delta_time);
+	FRotator newRot = UKismetMathLibrary::FindLookAtRotation(myPos, newPos) * delta_time;
+	SetActorRotation(newRot);
+	SetActorLocation(newPos);
 }
